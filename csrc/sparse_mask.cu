@@ -138,5 +138,5 @@ void launch_prepare_mask(
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("prepare_sparse_mask", &launch_prepare_sparse_mask, "Prepare Sparse Mask Kernel");
+    m.def("prepare_sparse_mask", &launch_prepare_mask, "Prepare Sparse Mask Kernel");
 }
