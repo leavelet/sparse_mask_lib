@@ -46,7 +46,7 @@ def test_correctness_and_perf():
         block_idx = k_idx // kBlockN
         token_in_block = k_idx % kBlockN
         word_idx = token_in_block // 64
-        bit_idx = token_in_block % 64
+        bit_idx = int(token_in_block % 64)
         
         val = f_mask[block_idx, word_idx].item()
         is_set = (val >> bit_idx) & 1
