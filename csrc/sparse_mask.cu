@@ -2,6 +2,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <vector>
+#include <c10/cuda/CUDAStream.h>
 
 // cuda kernels
 
@@ -84,7 +85,7 @@ void launch_prepare_mask(
     dim3 grid((total_q + kBlockM - 1) / kBlockM);
     dim3 block(kBlockM);
     size_t smem_size = max_k_blocks * sizeof(int);
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream();
+    cudaStream_t stream = at::cuda::getCurrentCUDAStream().stream();
 
     if (kBlockM == 128 && kBlockN == 128) {
         prepare_sparse_mask_kernel<128, 128><<<grid, block, smem_size, stream>>>(
