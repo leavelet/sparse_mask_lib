@@ -8,17 +8,20 @@ def prepare_sparse_mask(
     topk_indices: torch.Tensor,  # [total_q, topk] int32
     total_q: int,
     max_seqlen_k: int,
+    max_k_blocks: int,
     kBlockN: int,
     kBlockM: int,
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> torch.Tensor:
     """
     Python wrapper that allocates memory and calls the CUDA kernel.
     """
     device = topk_indices.device
     
     num_int64_per_block = (kBlockN + 63) // 64
-    max_k_blocks = (max_seqlen_k + kBlockN - 1) // kBlockN
-    num_q_tiles = (total_q + kBlockM - 1) // kBlockM
+    
+    # (max_k_blocks * num_int64_per_block) must be multiple of 16
+    if (max_k_blocks * num_int64_per_block) % 16 != 0:
+        raise ValueError(f"(max_k_blocks * num_int64_per_block) must be multiple of 16, got max_k_blocks={max_k_blocks}, num_int64_per_block={num_int64_per_block}, product={max_k_blocks * num_int64_per_block}")
     
     fine_mask = torch.zeros(
         (total_q, max_k_blocks, num_int64_per_block),
@@ -26,20 +29,14 @@ def prepare_sparse_mask(
         device=device
     )
     
-    coarse_mask = torch.zeros(
-        (num_q_tiles, max_k_blocks),
-        dtype=torch.bool,
-        device=device
-    )
-    
     sparse_mask_lib.prepare_sparse_mask(
         topk_indices,
         fine_mask,
-        coarse_mask,
         total_q,
         max_seqlen_k,
+        max_k_blocks,
         kBlockM,
         kBlockN
     )
     
-    return fine_mask, coarse_mask
+    return fine_mask

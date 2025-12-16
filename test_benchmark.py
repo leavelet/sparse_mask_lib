@@ -11,14 +11,24 @@ def test_correctness_and_perf():
     topk = 2048
     
     kBlockM = 128
-    kBlockN = 128 
+    kBlockN = 128
     
-    print(f"Config: Q={total_q}, K_len={max_seqlen_k}, TopK={topk}, Tile={kBlockM}x{kBlockN}")
+    # Calculate max_k_blocks and ensure (max_k_blocks * num_int64_per_block) is a multiple of 16
+    max_k_blocks = (max_seqlen_k + kBlockN - 1) // kBlockN
+    num_int64_per_block = (kBlockN + 63) // 64
+    # Ensure (max_k_blocks * num_int64_per_block) is a multiple of 16
+    product = max_k_blocks * num_int64_per_block
+    if product % 16 != 0:
+        # Round up product to multiple of 16
+        aligned_product = ((product + 15) // 16) * 16
+        max_k_blocks = aligned_product // num_int64_per_block
+    
+    print(f"Config: Q={total_q}, K_len={max_seqlen_k}, TopK={topk}, Tile={kBlockM}x{kBlockN}, max_k_blocks={max_k_blocks}")
 
     topk_indices = torch.randint(0, max_seqlen_k, (total_q, topk), dtype=torch.int32, device=device)
     
     for _ in range(5):
-        prepare_sparse_mask(topk_indices, total_q, max_seqlen_k, kBlockN, kBlockM)
+        prepare_sparse_mask(topk_indices, total_q, max_seqlen_k, max_k_blocks, kBlockN, kBlockM)
     
     torch.cuda.synchronize()
     
@@ -27,7 +37,7 @@ def test_correctness_and_perf():
     
     start_event.record()
     for _ in range(100):
-        fine_mask, coarse_mask = prepare_sparse_mask(topk_indices, total_q, max_seqlen_k, kBlockN, kBlockM)
+        fine_mask = prepare_sparse_mask(topk_indices, total_q, max_seqlen_k, max_k_blocks, kBlockN, kBlockM)
     end_event.record()
     torch.cuda.synchronize()
     
@@ -35,7 +45,6 @@ def test_correctness_and_perf():
     print(f"Average time: {elapsed_ms:.4f} ms")
     
     print(f"Fine mask shape: {fine_mask.shape}")
-    print(f"Coarse mask shape: {coarse_mask.shape}")
     
     q_idx = 0
     indices = topk_indices[q_idx].cpu().numpy()
