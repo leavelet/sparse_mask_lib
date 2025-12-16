@@ -1,6 +1,6 @@
 import torch
 import time
-from sparse_mask_op import prepare_sparse_mask
+from sparse_mask import prepare_sparse_mask
 
 def test_correctness_and_perf():
     torch.manual_seed(42)
