@@ -13,15 +13,15 @@ def test_correctness_and_perf():
     kBlockM = 128
     kBlockN = 128
     
-    # Calculate max_k_blocks and ensure (max_k_blocks * num_int64_per_block) is a multiple of 16
+    # Calculate max_k_blocks and ensure (max_k_blocks * num_int32_per_block * sizeof(int)) is a multiple of 128
     max_k_blocks = (max_seqlen_k + kBlockN - 1) // kBlockN
-    num_int64_per_block = (kBlockN + 63) // 64
-    # Ensure (max_k_blocks * num_int64_per_block) is a multiple of 16
-    product = max_k_blocks * num_int64_per_block
-    if product % 16 != 0:
-        # Round up product to multiple of 16
-        aligned_product = ((product + 15) // 16) * 16
-        max_k_blocks = aligned_product // num_int64_per_block
+    num_int32_per_block = (kBlockN + 31) // 32
+    # Ensure (max_k_blocks * num_int32_per_block) is a multiple of 32
+    product = max_k_blocks * num_int32_per_block
+    if product % 32 != 0:
+        # Round up product to multiple of 32
+        aligned_product = ((product + 31) // 32) * 32
+        max_k_blocks = aligned_product // num_int32_per_block
     
     print(f"Config: Q={total_q}, K_len={max_seqlen_k}, TopK={topk}, Tile={kBlockM}x{kBlockN}, max_k_blocks={max_k_blocks}")
 
@@ -54,8 +54,8 @@ def test_correctness_and_perf():
         if k_idx == -1: continue
         block_idx = k_idx // kBlockN
         token_in_block = k_idx % kBlockN
-        word_idx = token_in_block // 64
-        bit_idx = int(token_in_block % 64)
+        word_idx = token_in_block // 32
+        bit_idx = int(token_in_block % 32)
         
         val = f_mask[block_idx, word_idx].item()
         is_set = (val >> bit_idx) & 1

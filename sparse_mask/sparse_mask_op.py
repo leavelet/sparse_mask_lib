@@ -17,15 +17,16 @@ def prepare_sparse_mask(
     """
     device = topk_indices.device
     
-    num_int64_per_block = (kBlockN + 63) // 64
+    num_int32_per_block = (kBlockN + 31) // 32
     
-    # (max_k_blocks * num_int64_per_block) must be multiple of 16
-    if (max_k_blocks * num_int64_per_block) % 16 != 0:
-        raise ValueError(f"(max_k_blocks * num_int64_per_block) must be multiple of 16, got max_k_blocks={max_k_blocks}, num_int64_per_block={num_int64_per_block}, product={max_k_blocks * num_int64_per_block}")
+    # (max_k_blocks * num_int32_per_block * sizeof(int)) must be multiple of 128
+    # i.e., (max_k_blocks * num_int32_per_block) must be multiple of 32
+    if (max_k_blocks * num_int32_per_block) % 32 != 0:
+        raise ValueError(f"(max_k_blocks * num_int32_per_block * sizeof(int)) must be multiple of 128, got max_k_blocks={max_k_blocks}, num_int32_per_block={num_int32_per_block}, product={max_k_blocks * num_int32_per_block}")
     
     fine_mask = torch.zeros(
-        (total_q, max_k_blocks, num_int64_per_block),
-        dtype=torch.int64,
+        (total_q, max_k_blocks, num_int32_per_block),
+        dtype=torch.int32,
         device=device
     )
     
