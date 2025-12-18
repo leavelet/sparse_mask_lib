@@ -62,8 +62,9 @@ def verify_mask_correctness(topk_indices, fine_mask, kBlockN, reordered):
 def count_bits(tensor):
     """Count total number of set bits in tensor."""
     bits = 0
-    for val in tensor.view(-1).cpu().numpy():
-        bits += bin(val & 0xFFFFFFFF).count('1')
+    for val in tensor.view(-1).cpu().tolist():
+        # Convert to unsigned 32-bit integer to handle negative values
+        bits += bin(int(val) & 0xFFFFFFFF).count('1')
     return bits
 
 
